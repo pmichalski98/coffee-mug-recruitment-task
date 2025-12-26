@@ -40,9 +40,9 @@ const isHoliday = (date: Date): boolean => {
 };
 
 const calculateVolumeDiscount = (totalQuantity: number): number => {
-  if (totalQuantity >= 30) return 30;
-  if (totalQuantity >= 20) return 20;
-  if (totalQuantity >= 10) return 10;
+  if (totalQuantity >= 50) return 30;
+  if (totalQuantity >= 10) return 20;
+  if (totalQuantity >= 5) return 10;
   return 0;
 };
 
