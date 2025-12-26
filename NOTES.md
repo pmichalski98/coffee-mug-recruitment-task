@@ -10,7 +10,7 @@
 
 - **Location model**: Customer location is stored as an enum (`US`, `EU`, `ASIA`) directly on the Customer entity, as specified in the task ("Location does not have to be fetched dynamically").
 
-- **Black Friday calculation**: Black Friday is calculated as the last Friday of November, which aligns with the day after Thanksgiving (4th Thursday of November).
+- **Black Friday calculation**: Black Friday is calculated as the last Friday of November, which aligns with the day after Thanksgiving (4th Thursday of November). Uses server timezone for date operations.
 
 - **Polish holidays**: Holiday discounts use Polish bank holidays as the reference, implemented via the `date-holidays` library.
 
@@ -155,3 +155,5 @@ This separation:
 - If rules become complex, the service could become hard to maintain
 
 **Files affected**: `src/services/discountService.ts`, `src/handlers/commandHandlers/createOrderHandler.ts`
+
+- **Timezone handling**: Date-based discount logic (Black Friday, holidays) uses server timezone. For international customers across US/EU/ASIA, this could cause edge cases where a customer's local date differs from server date. A production system might use UTC explicitly or customer-local timezones, but this was omitted as a business decision that would require explicit requirements.
