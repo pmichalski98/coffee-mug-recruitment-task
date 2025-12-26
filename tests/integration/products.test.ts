@@ -293,4 +293,328 @@ describe("Products API", () => {
       expect(response.body.stock).toBe(0);
     });
   });
+
+  describe("POST /api/products/:id/restock", () => {
+    it("should restock a product successfully", async () => {
+      const product = await Product.create({
+        name: "Test Product",
+        description: "Test Description",
+        price: 29.99,
+        stock: 100,
+      });
+
+      const response = await request(app)
+        .post(`/api/products/${product._id.toString()}/restock`)
+        .send({ amount: 50 })
+        .expect(200);
+
+      expect(response.body.stock).toBe(150);
+      expect(response.body.id).toBe(product._id.toString());
+
+      const updatedProduct = await Product.findById(product._id);
+      expect(updatedProduct?.stock).toBe(150);
+    });
+
+    it("should return 404 if product not found", async () => {
+      const fakeId = "507f1f77bcf86cd799439011";
+
+      const response = await request(app)
+        .post(`/api/products/${fakeId}/restock`)
+        .send({ amount: 50 })
+        .expect(404);
+
+      expect(response.body).toHaveProperty("error");
+      expect(response.body.error).toBe("Product not found");
+    });
+
+    it("should return 400 if amount is missing", async () => {
+      const product = await Product.create({
+        name: "Test Product",
+        description: "Test Description",
+        price: 29.99,
+        stock: 100,
+      });
+
+      const response = await request(app)
+        .post(`/api/products/${product._id.toString()}/restock`)
+        .send({})
+        .expect(400);
+
+      expect(response.body).toHaveProperty("message");
+      expect(response.body).toHaveProperty("details");
+    });
+
+    it("should return 400 if amount is not positive", async () => {
+      const product = await Product.create({
+        name: "Test Product",
+        description: "Test Description",
+        price: 29.99,
+        stock: 100,
+      });
+
+      const response = await request(app)
+        .post(`/api/products/${product._id.toString()}/restock`)
+        .send({ amount: -10 })
+        .expect(400);
+
+      expect(response.body).toHaveProperty("message");
+      expect(response.body).toHaveProperty("details");
+    });
+
+    it("should return 400 if amount is zero", async () => {
+      const product = await Product.create({
+        name: "Test Product",
+        description: "Test Description",
+        price: 29.99,
+        stock: 100,
+      });
+
+      const response = await request(app)
+        .post(`/api/products/${product._id.toString()}/restock`)
+        .send({ amount: 0 })
+        .expect(400);
+
+      expect(response.body).toHaveProperty("message");
+      expect(response.body).toHaveProperty("details");
+    });
+
+    it("should return 400 if amount is not an integer", async () => {
+      const product = await Product.create({
+        name: "Test Product",
+        description: "Test Description",
+        price: 29.99,
+        stock: 100,
+      });
+
+      const response = await request(app)
+        .post(`/api/products/${product._id.toString()}/restock`)
+        .send({ amount: 10.5 })
+        .expect(400);
+
+      expect(response.body).toHaveProperty("message");
+      expect(response.body).toHaveProperty("details");
+    });
+
+    it("should return 400 if product ID format is invalid", async () => {
+      const response = await request(app)
+        .post("/api/products/invalid-id/restock")
+        .send({ amount: 50 })
+        .expect(400);
+
+      expect(response.body).toHaveProperty("message");
+      expect(response.body).toHaveProperty("details");
+    });
+
+    it("should handle multiple restocks correctly", async () => {
+      const product = await Product.create({
+        name: "Test Product",
+        description: "Test Description",
+        price: 29.99,
+        stock: 100,
+      });
+
+      await request(app)
+        .post(`/api/products/${product._id.toString()}/restock`)
+        .send({ amount: 25 })
+        .expect(200);
+
+      await request(app)
+        .post(`/api/products/${product._id.toString()}/restock`)
+        .send({ amount: 75 })
+        .expect(200);
+
+      const updatedProduct = await Product.findById(product._id);
+      expect(updatedProduct?.stock).toBe(200);
+    });
+  });
+
+  describe("POST /api/products/:id/sell", () => {
+    it("should sell a product successfully", async () => {
+      const product = await Product.create({
+        name: "Test Product",
+        description: "Test Description",
+        price: 29.99,
+        stock: 100,
+      });
+
+      const response = await request(app)
+        .post(`/api/products/${product._id.toString()}/sell`)
+        .send({ amount: 30 })
+        .expect(200);
+
+      expect(response.body.stock).toBe(70);
+      expect(response.body.id).toBe(product._id.toString());
+
+      const updatedProduct = await Product.findById(product._id);
+      expect(updatedProduct?.stock).toBe(70);
+    });
+
+    it("should return 404 if product not found", async () => {
+      const fakeId = "507f1f77bcf86cd799439011";
+
+      const response = await request(app)
+        .post(`/api/products/${fakeId}/sell`)
+        .send({ amount: 30 })
+        .expect(404);
+
+      expect(response.body).toHaveProperty("error");
+      expect(response.body.error).toBe("Product not found");
+    });
+
+    it("should return 409 if insufficient stock", async () => {
+      const product = await Product.create({
+        name: "Test Product",
+        description: "Test Description",
+        price: 29.99,
+        stock: 50,
+      });
+
+      const response = await request(app)
+        .post(`/api/products/${product._id.toString()}/sell`)
+        .send({ amount: 100 })
+        .expect(409);
+
+      expect(response.body).toHaveProperty("error");
+      expect(response.body.error).toBe("Insufficient stock");
+
+      const unchangedProduct = await Product.findById(product._id);
+      expect(unchangedProduct?.stock).toBe(50);
+    });
+
+    it("should return 400 if amount is missing", async () => {
+      const product = await Product.create({
+        name: "Test Product",
+        description: "Test Description",
+        price: 29.99,
+        stock: 100,
+      });
+
+      const response = await request(app)
+        .post(`/api/products/${product._id.toString()}/sell`)
+        .send({})
+        .expect(400);
+
+      expect(response.body).toHaveProperty("message");
+      expect(response.body).toHaveProperty("details");
+    });
+
+    it("should return 400 if amount is not positive", async () => {
+      const product = await Product.create({
+        name: "Test Product",
+        description: "Test Description",
+        price: 29.99,
+        stock: 100,
+      });
+
+      const response = await request(app)
+        .post(`/api/products/${product._id.toString()}/sell`)
+        .send({ amount: -10 })
+        .expect(400);
+
+      expect(response.body).toHaveProperty("message");
+      expect(response.body).toHaveProperty("details");
+    });
+
+    it("should return 400 if amount is zero", async () => {
+      const product = await Product.create({
+        name: "Test Product",
+        description: "Test Description",
+        price: 29.99,
+        stock: 100,
+      });
+
+      const response = await request(app)
+        .post(`/api/products/${product._id.toString()}/sell`)
+        .send({ amount: 0 })
+        .expect(400);
+
+      expect(response.body).toHaveProperty("message");
+      expect(response.body).toHaveProperty("details");
+    });
+
+    it("should return 400 if amount is not an integer", async () => {
+      const product = await Product.create({
+        name: "Test Product",
+        description: "Test Description",
+        price: 29.99,
+        stock: 100,
+      });
+
+      const response = await request(app)
+        .post(`/api/products/${product._id.toString()}/sell`)
+        .send({ amount: 10.5 })
+        .expect(400);
+
+      expect(response.body).toHaveProperty("message");
+      expect(response.body).toHaveProperty("details");
+    });
+
+    it("should return 400 if product ID format is invalid", async () => {
+      const response = await request(app)
+        .post("/api/products/invalid-id/sell")
+        .send({ amount: 30 })
+        .expect(400);
+
+      expect(response.body).toHaveProperty("message");
+      expect(response.body).toHaveProperty("details");
+    });
+
+    it("should sell exact stock amount", async () => {
+      const product = await Product.create({
+        name: "Test Product",
+        description: "Test Description",
+        price: 29.99,
+        stock: 50,
+      });
+
+      const response = await request(app)
+        .post(`/api/products/${product._id.toString()}/sell`)
+        .send({ amount: 50 })
+        .expect(200);
+
+      expect(response.body.stock).toBe(0);
+
+      const updatedProduct = await Product.findById(product._id);
+      expect(updatedProduct?.stock).toBe(0);
+    });
+
+    it("should handle multiple sells correctly", async () => {
+      const product = await Product.create({
+        name: "Test Product",
+        description: "Test Description",
+        price: 29.99,
+        stock: 100,
+      });
+
+      await request(app)
+        .post(`/api/products/${product._id.toString()}/sell`)
+        .send({ amount: 25 })
+        .expect(200);
+
+      await request(app)
+        .post(`/api/products/${product._id.toString()}/sell`)
+        .send({ amount: 30 })
+        .expect(200);
+
+      const updatedProduct = await Product.findById(product._id);
+      expect(updatedProduct?.stock).toBe(45);
+    });
+
+    it("should not allow selling when stock is zero", async () => {
+      const product = await Product.create({
+        name: "Test Product",
+        description: "Test Description",
+        price: 29.99,
+        stock: 0,
+      });
+
+      const response = await request(app)
+        .post(`/api/products/${product._id.toString()}/sell`)
+        .send({ amount: 1 })
+        .expect(409);
+
+      expect(response.body).toHaveProperty("error");
+      expect(response.body.error).toBe("Insufficient stock");
+    });
+  });
 });
