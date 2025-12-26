@@ -8,18 +8,19 @@ import { HTTP_STATUS } from "../../constants";
 export const sellProductHandler = async (
   command: SellProductCommand
 ): Promise<IProduct> => {
-  const product = await Product.findById(command.productId);
+  const updatedProduct = await Product.findOneAndUpdate(
+    { _id: command.productId, stock: { $gte: command.amount } },
+    { $inc: { stock: -command.amount } },
+    { new: true }
+  );
 
-  if (!product) {
-    throw new AppError("Product not found", HTTP_STATUS.NOT_FOUND);
-  }
-
-  if (product.stock < command.amount) {
+  if (!updatedProduct) {
+    const exists = await Product.exists({ _id: command.productId });
+    if (!exists) {
+      throw new AppError("Product not found", HTTP_STATUS.NOT_FOUND);
+    }
     throw new AppError("Insufficient stock", HTTP_STATUS.CONFLICT);
   }
-
-  product.stock -= command.amount;
-  const updatedProduct = await product.save();
 
   return mapProductToIProduct(updatedProduct);
 };
