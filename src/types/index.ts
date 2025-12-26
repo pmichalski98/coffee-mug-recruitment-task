@@ -1,5 +1,7 @@
 // Base types for the inventory management system
 
+export type DiscountType = "volume" | "black_friday" | "holiday" | "none";
+
 export interface IProduct {
   id: string;
   name: string;
@@ -28,7 +30,7 @@ export interface IOrder {
   customerId: string;
   products: IOrderItem[];
   total: number;
-  discountApplied?: string;
+  discountApplied?: DiscountType;
   discountAmount?: number;
   createdAt: string;
 }
