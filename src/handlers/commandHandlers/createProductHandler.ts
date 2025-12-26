@@ -1,6 +1,7 @@
 import { CreateProductCommand } from "../../commands/products/CreateProductCommand";
 import { Product } from "../../models/Product";
 import { IProduct } from "../../types";
+import { mapProductToIProduct } from "../../utils/productMapper";
 
 export const createProductHandler = async (
   command: CreateProductCommand
@@ -15,14 +16,5 @@ export const createProductHandler = async (
 
   const savedProduct = await product.save();
 
-  return {
-    id: savedProduct._id.toString(),
-    name: savedProduct.name,
-    description: savedProduct.description,
-    price: savedProduct.price,
-    stock: savedProduct.stock,
-    category: savedProduct.category,
-    createdAt: savedProduct.createdAt,
-    updatedAt: savedProduct.updatedAt,
-  };
+  return mapProductToIProduct(savedProduct);
 };
