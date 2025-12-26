@@ -3,6 +3,7 @@ import { Product } from "../../models/Product";
 import { IProduct } from "../../types";
 import { AppError } from "../../middleware/errorHandler";
 import { mapProductToIProduct } from "../../utils/productMapper";
+import { HTTP_STATUS } from "../../constants";
 
 export const restockProductHandler = async (
   command: RestockProductCommand
@@ -10,7 +11,7 @@ export const restockProductHandler = async (
   const product = await Product.findById(command.productId);
 
   if (!product) {
-    throw new AppError("Product not found", 404);
+    throw new AppError("Product not found", HTTP_STATUS.NOT_FOUND);
   }
 
   product.stock += command.amount;

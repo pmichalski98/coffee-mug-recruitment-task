@@ -8,6 +8,7 @@ import {
   clearDatabase,
   disconnectTestDb,
 } from "../../helpers/db";
+import Holidays from "date-holidays";
 
 describe("createOrderHandler", () => {
   beforeAll(async () => {
@@ -437,7 +438,6 @@ describe("createOrderHandler", () => {
       category: "electronics",
     });
 
-    const Holidays = require("date-holidays");
     const hd = new Holidays("PL");
     const today = new Date();
     const holidays = hd.getHolidays(today.getFullYear());
@@ -482,7 +482,6 @@ describe("createOrderHandler", () => {
       category: "clothing",
     });
 
-    const Holidays = require("date-holidays");
     const hd = new Holidays("PL");
     const today = new Date();
     const holidays = hd.getHolidays(today.getFullYear());
@@ -535,7 +534,6 @@ describe("createOrderHandler", () => {
       category: "books",
     });
 
-    const Holidays = require("date-holidays");
     const hd = new Holidays("PL");
     const today = new Date();
     const holidays = hd.getHolidays(today.getFullYear());

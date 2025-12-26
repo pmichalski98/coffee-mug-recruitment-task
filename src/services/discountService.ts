@@ -1,5 +1,12 @@
 import Holidays from "date-holidays";
-import { DiscountType } from "../types";
+import { DiscountType, CustomerLocation } from "../types";
+import {
+  DISCOUNT,
+  LOCATION_PRICING,
+  HOLIDAY_ELIGIBLE_CATEGORIES,
+  HOLIDAY_COUNTRY_CODE,
+  DATE,
+} from "../constants";
 
 interface DiscountResult {
   discountType: DiscountType;
@@ -13,24 +20,25 @@ interface ProductInfo {
   quantity: number;
 }
 
-const HOLIDAY_ELIGIBLE_CATEGORIES = ["electronics", "clothing"];
-
 const isBlackFriday = (date: Date): boolean => {
   const year = date.getFullYear();
-  const lastDay = new Date(year, 11, 0);
-  let lastFriday = lastDay;
+  const lastDayOfNovember = new Date(year, DATE.DECEMBER, 0);
+  let lastFriday = lastDayOfNovember;
 
-  while (lastFriday.getDay() !== 5) {
-    lastFriday = new Date(lastFriday.getTime() - 24 * 60 * 60 * 1000);
+  while (lastFriday.getDay() !== DATE.FRIDAY) {
+    lastFriday = new Date(lastFriday.getTime() - DATE.MS_PER_DAY);
   }
 
-  return date.getMonth() === 10 && date.getDate() === lastFriday.getDate();
+  return (
+    date.getMonth() === DATE.NOVEMBER && date.getDate() === lastFriday.getDate()
+  );
 };
 
-const isHoliday = (date: Date): boolean => {
-  const hd = new Holidays("PL");
-  const holidays = hd.getHolidays(date.getFullYear());
-  return holidays.some((holiday) => {
+const isPolishHoliday = (date: Date): boolean => {
+  const holidays = new Holidays(HOLIDAY_COUNTRY_CODE);
+  const yearHolidays = holidays.getHolidays(date.getFullYear());
+
+  return yearHolidays.some((holiday) => {
     const holidayDate = new Date(holiday.date as string | Date);
     return (
       holidayDate.getMonth() === date.getMonth() &&
@@ -39,73 +47,81 @@ const isHoliday = (date: Date): boolean => {
   });
 };
 
-const calculateVolumeDiscount = (totalQuantity: number): number => {
-  if (totalQuantity >= 50) return 30;
-  if (totalQuantity >= 10) return 20;
-  if (totalQuantity >= 5) return 10;
+const getLocationMultiplier = (location: CustomerLocation): number =>
+  LOCATION_PRICING[location].MULTIPLIER;
+
+const applyLocationPricing = (
+  amount: number,
+  location: CustomerLocation
+): number => amount * getLocationMultiplier(location);
+
+const calculateVolumeDiscountPercent = (totalQuantity: number): number => {
+  const { TIER_3, TIER_2, TIER_1 } = DISCOUNT.VOLUME;
+
+  if (totalQuantity >= TIER_3.MIN_QUANTITY) return TIER_3.PERCENT;
+  if (totalQuantity >= TIER_2.MIN_QUANTITY) return TIER_2.PERCENT;
+  if (totalQuantity >= TIER_1.MIN_QUANTITY) return TIER_1.PERCENT;
+
   return 0;
 };
 
 const calculateHolidayEligibleTotal = (
   products: ProductInfo[],
-  customerLocation: "US" | "EU" | "ASIA"
+  customerLocation: CustomerLocation
 ): number => {
-  let eligibleTotal = 0;
+  const eligibleCategories = HOLIDAY_ELIGIBLE_CATEGORIES.map((c) =>
+    c.toLowerCase()
+  );
 
-  for (const product of products) {
-    if (
-      product.category &&
-      HOLIDAY_ELIGIBLE_CATEGORIES.includes(product.category.toLowerCase())
-    ) {
-      eligibleTotal += product.price * product.quantity;
-    }
-  }
+  const eligibleTotal = products
+    .filter(
+      (product) =>
+        product.category &&
+        eligibleCategories.includes(product.category.toLowerCase())
+    )
+    .reduce((sum, product) => sum + product.price * product.quantity, 0);
 
-  if (customerLocation === "EU") {
-    eligibleTotal = eligibleTotal * 1.15;
-  } else if (customerLocation === "ASIA") {
-    eligibleTotal = eligibleTotal * 0.95;
-  }
-
-  return eligibleTotal;
+  return applyLocationPricing(eligibleTotal, customerLocation);
 };
 
-const calculateDiscount = (
+const calculateBestDiscount = (
   adjustedTotal: number,
   totalQuantity: number,
-  orderDate: Date = new Date(),
-  products: ProductInfo[] = [],
-  customerLocation: "US" | "EU" | "ASIA" = "US"
+  orderDate: Date,
+  products: ProductInfo[],
+  customerLocation: CustomerLocation
 ): DiscountResult => {
   const discounts: DiscountResult[] = [];
 
-  const volumeDiscount = calculateVolumeDiscount(totalQuantity);
-  if (volumeDiscount > 0) {
+  const volumePercent = calculateVolumeDiscountPercent(totalQuantity);
+  if (volumePercent > 0) {
     discounts.push({
       discountType: "volume",
-      discountPercent: volumeDiscount,
-      discountAmount: adjustedTotal * (volumeDiscount / 100),
+      discountPercent: volumePercent,
+      discountAmount: adjustedTotal * (volumePercent / 100),
     });
   }
 
   if (isBlackFriday(orderDate)) {
+    const blackFridayPercent = DISCOUNT.BLACK_FRIDAY.PERCENT;
     discounts.push({
       discountType: "black_friday",
-      discountPercent: 25,
-      discountAmount: adjustedTotal * 0.25,
+      discountPercent: blackFridayPercent,
+      discountAmount: adjustedTotal * (blackFridayPercent / 100),
     });
   }
 
-  if (isHoliday(orderDate)) {
+  if (isPolishHoliday(orderDate)) {
     const holidayEligibleTotal = calculateHolidayEligibleTotal(
       products,
       customerLocation
     );
     if (holidayEligibleTotal > 0) {
+      const holidayPercent = DISCOUNT.HOLIDAY.PERCENT;
       discounts.push({
         discountType: "holiday",
-        discountPercent: 15,
-        discountAmount: holidayEligibleTotal * 0.15,
+        discountPercent: holidayPercent,
+        discountAmount: holidayEligibleTotal * (holidayPercent / 100),
       });
     }
   }
@@ -118,17 +134,15 @@ const calculateDiscount = (
     };
   }
 
-  const highestDiscount = discounts.reduce((max, current) =>
-    current.discountAmount > max.discountAmount ? current : max
+  return discounts.reduce((best, current) =>
+    current.discountAmount > best.discountAmount ? current : best
   );
-
-  return highestDiscount;
 };
 
 export const calculateOrderTotal = (
   baseTotal: number,
   totalQuantity: number,
-  customerLocation: "US" | "EU" | "ASIA",
+  customerLocation: CustomerLocation,
   orderDate: Date = new Date(),
   products: ProductInfo[] = []
 ): {
@@ -138,15 +152,9 @@ export const calculateOrderTotal = (
   discountAmount: number;
   total: number;
 } => {
-  let subtotal = baseTotal;
+  const subtotal = applyLocationPricing(baseTotal, customerLocation);
 
-  if (customerLocation === "EU") {
-    subtotal = baseTotal * 1.15;
-  } else if (customerLocation === "ASIA") {
-    subtotal = baseTotal * 0.95;
-  }
-
-  const discount = calculateDiscount(
+  const discount = calculateBestDiscount(
     subtotal,
     totalQuantity,
     orderDate,
@@ -154,13 +162,13 @@ export const calculateOrderTotal = (
     customerLocation
   );
 
-  const total = subtotal - discount.discountAmount;
+  const total = Math.max(0, subtotal - discount.discountAmount);
 
   return {
     subtotal,
     discountType: discount.discountType,
     discountPercent: discount.discountPercent,
     discountAmount: discount.discountAmount,
-    total: Math.max(0, total),
+    total,
   };
 };

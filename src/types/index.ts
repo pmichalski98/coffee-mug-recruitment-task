@@ -1,6 +1,8 @@
-// Base types for the inventory management system
-
 export type DiscountType = "volume" | "black_friday" | "holiday" | "none";
+
+export type CustomerLocation = "US" | "EU" | "ASIA";
+
+export const CUSTOMER_LOCATIONS: CustomerLocation[] = ["US", "EU", "ASIA"];
 
 export interface IProduct {
   id: string;
@@ -16,7 +18,7 @@ export interface IProduct {
 export interface ICustomer {
   id: string;
   name: string;
-  location: "US" | "EU" | "ASIA";
+  location: CustomerLocation;
   createdAt: string;
 }
 

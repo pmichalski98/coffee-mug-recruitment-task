@@ -10,13 +10,14 @@ import {
   sellProductSchema,
   productIdParamSchema,
 } from "../validators/productValidators";
+import { HTTP_STATUS } from "../constants";
 
 const router = Router();
 
 router.get("/", async (req: Request, res: Response, next) => {
   try {
     const products = await getProductsHandler({});
-    res.json(products);
+    res.status(HTTP_STATUS.OK).json(products);
   } catch (error) {
     next(error);
   }
@@ -28,7 +29,7 @@ router.post(
   async (req: Request, res: Response, next) => {
     try {
       const product = await createProductHandler(req.body);
-      res.status(201).json(product);
+      res.status(HTTP_STATUS.CREATED).json(product);
     } catch (error) {
       next(error);
     }
@@ -45,7 +46,7 @@ router.post(
         productId: req.params.id,
         amount: req.body.amount,
       });
-      res.json(product);
+      res.status(HTTP_STATUS.OK).json(product);
     } catch (error) {
       next(error);
     }
@@ -62,7 +63,7 @@ router.post(
         productId: req.params.id,
         amount: req.body.amount,
       });
-      res.json(product);
+      res.status(HTTP_STATUS.OK).json(product);
     } catch (error) {
       next(error);
     }

@@ -1,14 +1,25 @@
 import { z } from "zod";
+import { VALIDATION } from "../constants";
+
+const mongoObjectIdSchema = z
+  .string()
+  .regex(VALIDATION.MONGODB_OBJECT_ID_REGEX, "Invalid ID format");
 
 export const createProductSchema = z.object({
   name: z
     .string()
-    .max(50, "Name must be at most 50 characters")
-    .min(1, "Name is required"),
+    .min(1, "Name is required")
+    .max(
+      VALIDATION.NAME_MAX_LENGTH,
+      `Name must be at most ${VALIDATION.NAME_MAX_LENGTH} characters`
+    ),
   description: z
     .string()
-    .max(50, "Description must be at most 50 characters")
-    .min(1, "Description is required"),
+    .min(1, "Description is required")
+    .max(
+      VALIDATION.DESCRIPTION_MAX_LENGTH,
+      `Description must be at most ${VALIDATION.DESCRIPTION_MAX_LENGTH} characters`
+    ),
   price: z.number().positive("Price must be a positive number"),
   stock: z
     .number()
@@ -17,27 +28,25 @@ export const createProductSchema = z.object({
   category: z.string().optional(),
 });
 
-export type CreateProductInput = z.infer<typeof createProductSchema>;
-
 export const restockProductSchema = z.object({
   amount: z
     .number()
-    .positive("Amount must be greater than 0")
-    .int("Amount must be an integer"),
+    .int("Amount must be an integer")
+    .positive("Amount must be greater than 0"),
 });
 
 export const sellProductSchema = z.object({
   amount: z
     .number()
-    .positive("Amount must be greater than 0")
-    .int("Amount must be an integer"),
+    .int("Amount must be an integer")
+    .positive("Amount must be greater than 0"),
 });
-
-export type RestockProductInput = z.infer<typeof restockProductSchema>;
-export type SellProductInput = z.infer<typeof sellProductSchema>;
 
 export const productIdParamSchema = z.object({
-  id: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid product ID format"),
+  id: mongoObjectIdSchema,
 });
 
+export type CreateProductInput = z.infer<typeof createProductSchema>;
+export type RestockProductInput = z.infer<typeof restockProductSchema>;
+export type SellProductInput = z.infer<typeof sellProductSchema>;
 export type ProductIdParam = z.infer<typeof productIdParamSchema>;
